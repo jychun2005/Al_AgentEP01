@@ -51,10 +51,19 @@ def parse_react(text: str) -> dict:
         result["final_answer"] = match.group(1).strip()
     return result
 
-def run_agent(user_input: str, max_steps: int = 10):
-    messages = [
-        {"role": "user", "parts": [SYSTEM_PROMPT + f"\n\n使用者問題：{user_input}"]}
-    ]
+def upload_image(path: str):
+    if not os.path.exists(path):
+        print(f"{Fore.RED}[錯誤] 找不到圖片：{path}{Style.RESET_ALL}")
+        sys.exit(1)
+    print(f"{Fore.YELLOW}[上傳] 圖片：{path}{Style.RESET_ALL}")
+    return genai.upload_file(path)
+
+def run_agent(user_input: str, image_path: str = None, max_steps: int = 10):
+    parts = [SYSTEM_PROMPT + f"\n\n使用者問題：{user_input}"]
+    if image_path:
+        parts.insert(0, upload_image(image_path))
+
+    messages = [{"role": "user", "parts": parts}]
 
     print(f"\n{Back.BLUE}{Fore.WHITE} [Agent] 啟動 {Style.RESET_ALL}\n")
 
@@ -97,10 +106,15 @@ def run_agent(user_input: str, max_steps: int = 10):
     return None
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1:
-        query = " ".join(sys.argv[1:])
-        run_agent(query)
+    import argparse
+    parser = argparse.ArgumentParser(description="ReAct Agent with image support")
+    parser.add_argument("query", nargs="*", help="問題文字")
+    parser.add_argument("--image", "-i", help="圖片路徑")
+    args = parser.parse_args()
+
+    if args.query or args.image:
+        query = " ".join(args.query) if args.query else "請描述這張圖片"
+        run_agent(query, image_path=args.image)
     else:
         print(f"{Fore.CYAN}{Back.BLACK}ReAct Agent{Style.RESET_ALL}")
         print(f"{Fore.WHITE}輸入你的問題（輸入 exit 結束）{Style.RESET_ALL}")
