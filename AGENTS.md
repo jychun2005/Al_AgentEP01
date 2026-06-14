@@ -62,6 +62,6 @@ graph TD
 * **專案目錄架構**：
   - [x] `README.md` - 專案導覽與概念說明
   - [x] `agents.md` - 本工作藍圖
-  - [ ] `requirements.txt` - 依賴包定義
-  - [ ] `tools.py` - 自訂工具庫
-  - [ ] `simple_agent.py` - ReAct 核心邏輯
+  - [x] `requirements.txt` - 依賴包定義
+  - [x] `tools.py` - 自訂工具庫
+  - [x] `simple_agent.py` - ReAct 核心邏輯
