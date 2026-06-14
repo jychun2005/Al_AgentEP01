@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import PIL.Image
 import google.generativeai as genai
 from dotenv import load_dotenv
 from colorama import init, Fore, Style, Back
@@ -55,8 +56,8 @@ def upload_image(path: str):
     if not os.path.exists(path):
         print(f"{Fore.RED}[錯誤] 找不到圖片：{path}{Style.RESET_ALL}")
         sys.exit(1)
-    print(f"{Fore.YELLOW}[上傳] 圖片：{path}{Style.RESET_ALL}")
-    return genai.upload_file(path)
+    print(f"{Fore.YELLOW}[載入] 圖片：{path}{Style.RESET_ALL}")
+    return PIL.Image.open(path)
 
 def run_agent(user_input: str, image_path: str = None, max_steps: int = 10):
     parts = [SYSTEM_PROMPT + f"\n\n使用者問題：{user_input}"]
