@@ -1,8 +1,8 @@
 import os
 import re
 import sys
-import PIL.Image
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 from colorama import init, Fore, Style, Back
 from tools import run_tool, get_tool_descriptions
@@ -11,7 +11,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
 init(autoreset=True)
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+client = genai.Client(api_key=api_key)
 MODEL = "gemini-2.5-flash"
 
 SYSTEM_PROMPT = f"""你是一個 ReAct Agent，請遵循以下規則進行思考與行動：
@@ -37,6 +38,11 @@ Final Answer: 你的最終回答
 - 如果工具回傳錯誤，請嘗試修正後重試
 - 最多進行 10 輪思考"""
 
+MIME_MAP = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".webp": "image/webp", ".bmp": "image/bmp",
+}
+
 def parse_react(text: str) -> dict:
     result = {}
     if match := re.search(r"Thought:\s*(.+?)(?=\n(?:Action|Final)|$)", text, re.DOTALL):
@@ -58,10 +64,14 @@ def build_contents(user_input: str, image_path: str = None):
         if not os.path.exists(image_path):
             print(f"{Fore.RED}[錯誤] 找不到圖片：{image_path}{Style.RESET_ALL}")
             sys.exit(1)
-        print(f"{Fore.YELLOW}[載入] 圖片：{image_path}{Style.RESET_ALL}")
-        img = PIL.Image.open(image_path)
-        return [text, img]
-    return [text]
+        ext = os.path.splitext(image_path)[1].lower()
+        mime = MIME_MAP.get(ext, "image/png")
+        print(f"{Fore.YELLOW}[載入] 圖片：{image_path} ({mime}){Style.RESET_ALL}")
+        with open(image_path, "rb") as f:
+            img_bytes = f.read()
+        return [types.Part.from_bytes(data=img_bytes, mime_type=mime),
+                types.Part.from_text(text)]
+    return [types.Part.from_text(text)]
 
 def run_agent(user_input: str, image_path: str = None, max_steps: int = 10):
     contents = build_contents(user_input, image_path)
@@ -93,8 +103,10 @@ def run_agent(user_input: str, image_path: str = None, max_steps: int = 10):
             observation = run_tool(action, **action_input)
             print(f"{Fore.BLUE}[觀察] {observation}{Style.RESET_ALL}")
 
-            contents.append(raw)
-            contents.append(f"Observation: {observation}\n\n請根據觀察結果繼續思考。")
+            contents.append(types.Part.from_text(raw))
+            contents.append(
+                types.Part.from_text(f"Observation: {observation}\n\n請根據觀察結果繼續思考。")
+            )
         else:
             print(f"{Fore.RED}[錯誤] 無法解析 Action，結束循環{Style.RESET_ALL}")
             break
