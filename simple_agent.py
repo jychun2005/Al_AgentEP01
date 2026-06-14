@@ -1,10 +1,12 @@
 import os
 import re
+import sys
 import google.generativeai as genai
 from dotenv import load_dotenv
 from colorama import init, Fore, Style, Back
 from tools import run_tool, get_tool_descriptions
 
+sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
 init(autoreset=True)
 
@@ -54,16 +56,16 @@ def run_agent(user_input: str, max_steps: int = 10):
         {"role": "user", "parts": [SYSTEM_PROMPT + f"\n\n使用者問題：{user_input}"]}
     ]
 
-    print(f"\n{Back.BLUE}{Fore.WHITE} 🤖 Agent 啟動 {Style.RESET_ALL}\n")
+    print(f"\n{Back.BLUE}{Fore.WHITE} [Agent] 啟動 {Style.RESET_ALL}\n")
 
     for step in range(max_steps):
         print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}🔁 Step {step + 1}/{max_steps}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}[Step] {step + 1}/{max_steps}{Style.RESET_ALL}")
 
         response = model.generate_content(messages)
         raw = response.text.strip()
 
-        print(f"\n{Fore.GREEN}💭 模型輸出：{Style.RESET_ALL}")
+        print(f"\n{Fore.GREEN}[模型輸出]{Style.RESET_ALL}")
         print(raw)
 
         parsed = parse_react(raw)
@@ -73,14 +75,14 @@ def run_agent(user_input: str, max_steps: int = 10):
         final_answer = parsed.get("final_answer", "")
 
         if final_answer:
-            print(f"\n{Back.GREEN}{Fore.BLACK} ✅ 最終回答 {Style.RESET_ALL}")
+            print(f"\n{Back.GREEN}{Fore.BLACK} [最終回答] {Style.RESET_ALL}")
             print(f"{Fore.WHITE}{Back.GREEN}{final_answer}{Style.RESET_ALL}")
             return final_answer
 
         if action:
-            print(f"\n{Fore.MAGENTA}🛠 執行工具：{action}{Style.RESET_ALL}")
+            print(f"\n{Fore.MAGENTA}[工具] 執行：{action}{Style.RESET_ALL}")
             observation = run_tool(action, **action_input)
-            print(f"{Fore.BLUE}👀 觀察結果：{observation}{Style.RESET_ALL}")
+            print(f"{Fore.BLUE}[觀察] {observation}{Style.RESET_ALL}")
 
             messages.append({"role": "model", "parts": [raw]})
             messages.append({
@@ -88,17 +90,22 @@ def run_agent(user_input: str, max_steps: int = 10):
                 "parts": [f"Observation: {observation}\n\n請根據觀察結果繼續思考。"]
             })
         else:
-            print(f"{Fore.RED}⚠️ 無法解析 Action，結束循環{Style.RESET_ALL}")
+            print(f"{Fore.RED}[錯誤] 無法解析 Action，結束循環{Style.RESET_ALL}")
             break
 
-    print(f"\n{Back.RED}{Fore.WHITE} ⛔ 達到最大步數 {max_steps}，強制結束 {Style.RESET_ALL}")
+    print(f"\n{Back.RED}{Fore.WHITE} [結束] 達到最大步數 {max_steps}，強制結束 {Style.RESET_ALL}")
     return None
 
 if __name__ == "__main__":
-    print(f"{Fore.CYAN}{Back.BLACK}簡易 ReAct Agent{Style.RESET_ALL}")
-    print(f"{Fore.WHITE}輸入你的問題（輸入 exit 結束）{Style.RESET_ALL}")
-    while True:
-        user_input = input(f"\n{Fore.GREEN}You: {Style.RESET_ALL}")
-        if user_input.lower() in ("exit", "quit"):
-            break
-        run_agent(user_input)
+    import sys
+    if len(sys.argv) > 1:
+        query = " ".join(sys.argv[1:])
+        run_agent(query)
+    else:
+        print(f"{Fore.CYAN}{Back.BLACK}ReAct Agent{Style.RESET_ALL}")
+        print(f"{Fore.WHITE}輸入你的問題（輸入 exit 結束）{Style.RESET_ALL}")
+        while True:
+            user_input = input(f"\n{Fore.GREEN}You: {Style.RESET_ALL}")
+            if user_input.lower() in ("exit", "quit"):
+                break
+            run_agent(user_input)
